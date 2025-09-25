@@ -19,12 +19,21 @@ chiqim_router: Router = Router()
 gemini = Geminiutils()
 
 
-@chiqim_router.message(F.voice | F.text)
+from aiogram import Router, F
+from aiogram.types import Message
+from loader import bot
+from utils.gemini import Geminiutils
+import tempfile, os
+
+chiqim_router = Router()
+gemini = Geminiutils()
+
+@chiqim_router.message(F.voice | (F.text & ~F.text.startswith("/")))
 async def handle_message(message: Message):
     try:
         chiqimtext = None
 
-        if message.voice:
+        if message.voice:  # ovozli habar
             file_id = message.voice.file_id
             file = await bot.get_file(file_id)
 
@@ -37,7 +46,7 @@ async def handle_message(message: Message):
             finally:
                 os.unlink(temp_file_path)
 
-        elif message.text:
+        elif message.text:  # oddiy matn
             chiqimtext = message.text
 
         if chiqimtext:
@@ -47,5 +56,3 @@ async def handle_message(message: Message):
     except Exception as e:
         print(f"errors: {e}")
         await message.reply(f"error: {e}")
-
-      
