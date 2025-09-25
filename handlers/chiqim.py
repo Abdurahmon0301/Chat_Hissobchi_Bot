@@ -19,35 +19,33 @@ chiqim_router: Router = Router()
 gemini = Geminiutils()
 
 
-@chiqim_router.message(F.voice)
-async def audio_msg(message: Message):
-    file_id = message.voice.file_id
-    
-    file = await bot.get_file(file_id)
-
-    file_obj = io.BytesIO()
- 
-
-    file_obj.seek(0)
-
-    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as temp_file:
-        await bot.download_file(file.file_path, destination=temp_file)
-        temp_file_path = temp_file.name
-
+@chiqim_router.message(F.voice | F.text)
+async def handle_message(message: Message):
     try:
-        chiqimtext = gemini.get_text(temp_file_path)
-        await message.reply(f" {chiqimtext}")
-        print(gemini.add_transaction(chiqimtext))
+        chiqimtext = None
 
+        if message.voice:
+            file_id = message.voice.file_id
+            file = await bot.get_file(file_id)
+
+            with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as temp_file:
+                await bot.download_file(file.file_path, destination=temp_file)
+                temp_file_path = temp_file.name
+
+            try:
+                chiqimtext = gemini.get_text(temp_file_path)
+            finally:
+                os.unlink(temp_file_path)
+
+        elif message.text:
+            chiqimtext = message.text
+
+        if chiqimtext:
+            await message.reply(f"{chiqimtext}")
+            print(gemini.add_transaction(chiqimtext))
 
     except Exception as e:
         print(f"errors: {e}")
         await message.reply(f"error: {e}")
-    finally:
-      
-        os.unlink(temp_file_path)
 
-    
-    
-        
       
